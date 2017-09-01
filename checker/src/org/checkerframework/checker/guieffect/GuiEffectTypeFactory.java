@@ -150,10 +150,10 @@ public class GuiEffectTypeFactory extends BaseAnnotatedTypeFactory {
      */
     public Effect getAccessEffect(Element elt) {
 
-        AnnotationMirror targetUIP = getDeclAnnotation(elt, UI.class);
+        AnnotationMirror targetUIP = getDeclAnnotation(elt, UIEffect.class);
         if (targetUIP != null) return new Effect(UIEffect.class);
 
-        AnnotationMirror targetSafeP = getDeclAnnotation(elt, AlwaysSafe.class);
+        AnnotationMirror targetSafeP = getDeclAnnotation(elt, SafeEffect.class);
         if (targetSafeP != null) return new Effect(SafeEffect.class);
 
         // And now, look for class and package annotations before defaulting to safe
