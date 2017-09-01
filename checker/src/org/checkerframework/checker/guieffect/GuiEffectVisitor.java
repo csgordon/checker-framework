@@ -2,6 +2,7 @@ package org.checkerframework.checker.guieffect;
 
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.ExpressionTree;
+import com.sun.source.tree.IdentifierTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.MethodTree;
@@ -10,6 +11,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.Stack;
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import org.checkerframework.checker.guieffect.qual.AlwaysSafe;
@@ -31,6 +33,7 @@ import org.checkerframework.javacutil.TreeUtils;
 public class GuiEffectVisitor extends BaseTypeVisitor<GuiEffectTypeFactory> {
 
     protected final boolean debugSpew;
+    protected final boolean flagUIfields;
 
     // effStack and currentMethods should always be the same size.
     protected final Stack<Effect> effStack;
@@ -39,6 +42,7 @@ public class GuiEffectVisitor extends BaseTypeVisitor<GuiEffectTypeFactory> {
     public GuiEffectVisitor(BaseTypeChecker checker) {
         super(checker);
         debugSpew = checker.getLintOption("debugSpew", false);
+        flagUIfields = checker.hasOption("flagUIfields");
         if (debugSpew) {
             System.err.println("Running GuiEffectVisitor");
         }
@@ -255,10 +259,53 @@ public class GuiEffectVisitor extends BaseTypeVisitor<GuiEffectTypeFactory> {
         return ret;
     }
 
+    /**
+     * Check if accessing the specified element from within the specified method is permitted, and
+     * if not report an error. This method should only be called when <code>flagUIfields</code> is
+     * set.
+     */
+    private void checkValidFieldAccess(Element elt, Tree node, MethodTree callerTree) {
+        assert (flagUIfields);
+
+        // This method is essentially a simplified version of the checks on
+        // method invocation, basically because field annotations cannot be
+        // polymorphic
+
+        ExecutableElement callerElt = TreeUtils.elementFromDeclaration(callerTree);
+        Effect callerEffect = atypeFactory.getDeclaredEffect(callerElt);
+
+        Effect targetEffect = atypeFactory.getAccessEffect(elt);
+
+        assert (currentMethods.peek() == null || callerEffect.equals(effStack.peek()));
+
+        if (!Effect.LE(targetEffect, callerEffect)) {
+            checker.report(
+                    Result.failure("fieldaccess.invalid.ui", targetEffect, callerEffect), node);
+        }
+    }
+
     @Override
     public Void visitMemberSelect(MemberSelectTree node, Void p) {
-        //TODO: Same effect checks as for methods
+        if (flagUIfields && TreeUtils.isFieldAccess(node)) {
+            //TODO: Same effect checks as for methods
+            Element elt = TreeUtils.elementFromUse(node);
+            MethodTree callerTree = TreeUtils.enclosingMethod(getCurrentPath());
+            checkValidFieldAccess(elt, node, callerTree);
+        }
         return super.visitMemberSelect(node, p);
+    }
+
+    @Override
+    public Void visitIdentifier(IdentifierTree node, Void p) {
+        /* This method is invoked for both variable accesses and implicit field
+         * accesses, so we must disambiguate */
+        if (flagUIfields && TreeUtils.isFieldAccess(node)) {
+            //TODO: Same effect checks as for methods
+            Element elt = TreeUtils.elementFromUse(node);
+            MethodTree callerTree = TreeUtils.enclosingMethod(getCurrentPath());
+            checkValidFieldAccess(elt, node, callerTree);
+        }
+        return super.visitIdentifier(node, p);
     }
 
     @Override

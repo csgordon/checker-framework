@@ -81,6 +81,11 @@ public class GuiEffectTypeFactory extends BaseAnnotatedTypeFactory {
                 || fromElement(cls).hasAnnotation(PolyUI.class);
     }
 
+    /**
+     * Returns whether the class is considered a UI Type, by virtue of a <code>@UIType</code>
+     * annotation directly on the class, or if the immediately enclosing package is marked with
+     * <code>@UIPackage</code>
+     */
     public boolean isUIType(TypeElement cls) {
         if (debugSpew) {
             System.err.println(" isUIType(" + cls + ")");
@@ -136,6 +141,29 @@ public class GuiEffectTypeFactory extends BaseAnnotatedTypeFactory {
     // TODO: is there a framework method for this?
     private static boolean isAnonymousType(TypeElement elem) {
         return elem.getSimpleName().length() == 0;
+    }
+
+    /**
+     * Returns the effect of accessing a given field based on explicit or implicit qualifiers on the
+     * field. The result will never be a polymorphic effect, since field qualifiers may not be
+     * polymorphic.
+     */
+    public Effect getAccessEffect(Element elt) {
+
+        AnnotationMirror targetUIP = getDeclAnnotation(elt, UI.class);
+        if (targetUIP != null) return new Effect(UIEffect.class);
+
+        AnnotationMirror targetSafeP = getDeclAnnotation(elt, AlwaysSafe.class);
+        if (targetSafeP != null) return new Effect(SafeEffect.class);
+
+        // And now, look for class and package annotations before defaulting to safe
+        TypeElement targetClassElt = (TypeElement) elt.getEnclosingElement();
+        if (isUIType(targetClassElt)) {
+            return new Effect(UIEffect.class);
+        }
+
+        // No explicit annotation, and not locally defaulted to UI via class or package annotations
+        return new Effect(SafeEffect.class);
     }
 
     /**
