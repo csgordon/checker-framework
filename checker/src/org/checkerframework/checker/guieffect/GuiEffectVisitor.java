@@ -290,6 +290,11 @@ public class GuiEffectVisitor extends BaseTypeVisitor<GuiEffectTypeFactory> {
             //TODO: Same effect checks as for methods
             Element elt = TreeUtils.elementFromUse(node);
             MethodTree callerTree = TreeUtils.enclosingMethod(getCurrentPath());
+            if (callerTree == null) {
+                // static initializer context
+                throw new IllegalArgumentException(
+                        "MemberSelectTree outside method: " + node.toString());
+            }
             checkValidFieldAccess(elt, node, callerTree);
         }
         return super.visitMemberSelect(node, p);
@@ -303,6 +308,11 @@ public class GuiEffectVisitor extends BaseTypeVisitor<GuiEffectTypeFactory> {
             //TODO: Same effect checks as for methods
             Element elt = TreeUtils.elementFromUse(node);
             MethodTree callerTree = TreeUtils.enclosingMethod(getCurrentPath());
+            if (callerTree == null) {
+                // static initializer context
+                throw new IllegalArgumentException(
+                        "IdentifierTree outside method: " + node.toString());
+            }
             checkValidFieldAccess(elt, node, callerTree);
         }
         return super.visitIdentifier(node, p);

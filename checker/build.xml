@@ -1050,6 +1050,9 @@
         <antcall target="-run-tests">
             <param name="param" value="tests.GuiEffectTest"/>
         </antcall>
+        <antcall target="-run-tests">
+            <param name="param" value="tests.GuiEffectFieldTest"/>
+        </antcall>
     </target>
 
     <target name="example-tests" depends="dist,example-tests-nobuildjdk"
